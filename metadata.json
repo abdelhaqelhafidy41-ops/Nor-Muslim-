@@ -1,0 +1,8 @@
+{
+  "name": "نور المسلم",
+  "description": "تطبيق إسلامي متكامل يجمع القرآن الكريم والتلاوات ومواقيت الصلاة والأذكار والتسبيح والقبلة والحج والعمرة والخطط التعبدية والمساعد الإسلامي.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

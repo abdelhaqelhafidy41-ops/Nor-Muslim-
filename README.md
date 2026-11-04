@@ -1,11 +1,44 @@
-<div align="center">
+# تطبيق «نور المسلم» - Noor Al-Muslim 🌙
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+تطبيق إسلامي متكامل وفاخر للهواتف الذكية بنظام Android، يجمع القرآن الكريم والتلاوات الصوتية، التفاسير المعتمدة، نظام حفظ القرآن، مواقيت الصلاة والأذان، بوصلة القبلة، الأذكار والأدعية، المسبحة الإلكترونية، قسم «صلاتي»، دليل الحج والعمرة، الإذاعات الإسلامية، السيرة والقصص، والمساعد الإسلامي.
 
-  <h1>Built with AI Studio</h2>
+---
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## البناء الآلي للتطبيق عبر GitHub Actions (CI/CD) 🚀
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+تم إعداد ملف العمل الآلي في المسار:
+`.github/workflows/android-build.yml`
 
-</div>
+يقوم هذا الـ Workflow ببناء ملف التطبيق التثبيتي (`.apk`) وحزمة النشر (`.aab`) تلقائياً عند كل عملية رفع (Push) أو طلب دمج (Pull Request) أو عند التشغيل اليدوي (Workflow Dispatch).
+
+### خطوات تشغيل وبناء التطبيق على GitHub:
+
+1. **رفع المشروع إلى مستودع GitHub:**
+   - قم بإنشاء مستودع جديد على حسابك في GitHub.
+   - ارفع كود المشروع إليه:
+   ```bash
+   git add .
+   git commit -m "إطلاق تطبيق نور المسلم مع GitHub Actions"
+   git branch -M main
+   git remote add origin https://github.com/USERNAME/REPOSITORY.git
+   git push -u origin main
+   ```
+
+2. **بدء البناء التلقائي:**
+   - بمجرد الرفع، انتقل إلى تبويب **Actions** في مستودعك على GitHub.
+   - ستجد مسار العمل **"Build Android App (Noor Al-Muslim)"** يعمل تلقائياً.
+   - يمكنك أيضاً تشغيله يدوياً بالضغط على **Run workflow**.
+
+3. **تحميل ملف التطبيق (APK):**
+   - بعد انتهاء البناء بنجاح (علامة صح خضراء ✓)، اضغط على اسم البناء.
+   - انزل إلى قسم **Artifacts** في أسفل الصفحة.
+   - اضغط على **`Noor-Al-Muslim-Debug-APK`** لتحميل ملف الـ APK وتثبيته مباشرة على هاتفك الأندرويد.
+
+---
+
+## المتطلبات التقنية:
+- **نظام التشغيل:** Android 7.0 (API 24) فما فوق.
+- **لغة البرمجة:** Kotlin.
+- **واجهة المستخدم:** Jetpack Compose (Material Design 3).
+- **البيئة:** JDK 21 و Gradle.
+- **معرف الحزمة (Application ID):** `com.noor.mouslim.android`
