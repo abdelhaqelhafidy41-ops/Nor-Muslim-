@@ -72,25 +72,48 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import kotlin.math.abs
 
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import com.example.util.CompassSensorManager
+import com.example.util.AppHapticManager
+
 @Composable
 fun QiblaScreen(
     prayerRepo: PrayerRepository,
     onBackClick: () -> Unit,
+    compassSensorManager: CompassSensorManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
     val currentCity by prayerRepo.currentCity.collectAsState()
     val qiblaData = remember(currentCity) { prayerRepo.calculateQibla() }
 
-    // Simulated device heading rotation (can be adjusted via slider or live sensors)
-    var deviceHeading by remember { mutableFloatStateOf(0f) }
+    // Real device sensors if available, with manual heading fallback
+    val sensorHeading by (compassSensorManager?.headingDegrees?.collectAsState() ?: remember { mutableFloatStateOf(0f) })
+    val hasSensors by (compassSensorManager?.hasSensors?.collectAsState() ?: remember { mutableStateOf(false) })
+    var manualHeading by remember { mutableFloatStateOf(0f) }
     var showCalibrationDialog by remember { mutableStateOf(false) }
 
-    val angleDifference = (qiblaData.azimuthDegrees - deviceHeading + 360) % 360
-    val isFacingKaaba = abs(angleDifference) < 5 || abs(angleDifference - 360) < 5
+    DisposableEffect(compassSensorManager) {
+        compassSensorManager?.startListening()
+        onDispose {
+            compassSensorManager?.stopListening()
+        }
+    }
+
+    val effectiveHeading = if (hasSensors) sensorHeading else manualHeading
+    val angleDifference = (qiblaData.azimuthDegrees - effectiveHeading + 360) % 360
+    val isFacingKaaba = abs(angleDifference) < 6 || abs(angleDifference - 360) < 6
+
+    LaunchedEffect(isFacingKaaba) {
+        if (isFacingKaaba) {
+            hapticManager?.vibrateCompletion()
+        }
+    }
 
     val animatedRotation by animateFloatAsState(
-        targetValue = -deviceHeading,
-        animationSpec = tween(300),
+        targetValue = -effectiveHeading,
+        animationSpec = tween(200),
         label = "compass_rotation"
     )
 
@@ -297,27 +320,29 @@ fun QiblaScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "محاكاة اتجاه البوصلة (درجة): ${deviceHeading.toInt()}°",
+                    text = if (hasSensors) "مستشعر البوصلة نشط: ${effectiveHeading.toInt()}°" else "محاكاة اتجاه البوصلة: ${manualHeading.toInt()}°",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = if (isFacingKaaba) "متطابق ✓" else "غيّر الاتجاه",
+                    text = if (isFacingKaaba) "متطابق مع القبلة ✓" else "غيّر الاتجاه",
                     color = if (isFacingKaaba) EmeraldPrimary else TextGold,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
-            Slider(
-                value = deviceHeading,
-                onValueChange = { deviceHeading = it },
-                valueRange = 0f..360f,
-                colors = SliderDefaults.colors(
-                    thumbColor = GoldPrimary,
-                    activeTrackColor = BluePrayer,
-                    inactiveTrackColor = IslamicDarkSurface
+            if (!hasSensors) {
+                Slider(
+                    value = manualHeading,
+                    onValueChange = { manualHeading = it },
+                    valueRange = 0f..360f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = GoldPrimary,
+                        activeTrackColor = BluePrayer,
+                        inactiveTrackColor = IslamicDarkSurface
+                    )
                 )
-            )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

@@ -67,10 +67,15 @@ import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+
 @Composable
 fun HajjUmrahScreen(
     hajjRepo: HajjMoodAndAssistantRepository,
     onBackClick: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableIntStateOf(0) } // 0: عداد الطواف والسعي | 1: خطوات العمرة | 2: خطوات الحج
@@ -240,7 +245,10 @@ fun HajjUmrahScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { hajjRepo.undoLap() },
+                        onClick = {
+                            hajjRepo.undoLap()
+                            hapticManager?.vibrateTap()
+                        },
                         modifier = Modifier
                             .size(54.dp)
                             .clip(CircleShape)
@@ -257,7 +265,16 @@ fun HajjUmrahScreen(
                     }
 
                     ElevatedButton(
-                        onClick = { hajjRepo.nextLap() },
+                        onClick = {
+                            val nextWillFinish = lapState.currentLap >= 6
+                            hajjRepo.nextLap()
+                            if (nextWillFinish) {
+                                hapticManager?.vibrateCompletion()
+                                audioManager?.playBeepTone()
+                            } else {
+                                hapticManager?.vibrateTap()
+                            }
+                        },
                         modifier = Modifier
                             .weight(1f)
                             .height(54.dp)

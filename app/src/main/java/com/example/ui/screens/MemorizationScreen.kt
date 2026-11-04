@@ -73,12 +73,20 @@ import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.ShareHelper
+
 @Composable
 fun MemorizationScreen(
     quranRepo: QuranRepository,
     onBackClick: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val plans by quranRepo.memorizationPlans.collectAsState()
     var showNewPlanDialog by remember { mutableStateOf(false) }
     var showQuizDialog by remember { mutableStateOf(false) }
@@ -439,8 +447,30 @@ fun MemorizationScreen(
         AlertDialog(
             onDismissRequest = { selectedCertificatePlan = null },
             confirmButton = {
-                TextButton(onClick = { selectedCertificatePlan = null }) {
-                    Text("إغلاق", color = GoldPrimary, fontWeight = FontWeight.Bold)
+                Row {
+                    ElevatedButton(
+                        onClick = {
+                            ShareHelper.shareCertificate(
+                                context = context,
+                                userName = cert.userName,
+                                surahName = cert.surahName,
+                                date = cert.completionDate
+                            )
+                            hapticManager?.vibrateTap()
+                        },
+                        colors = ButtonDefaults.elevatedButtonColors(
+                            containerColor = GoldPrimary,
+                            contentColor = Color(0xFF1E1700)
+                        )
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("مشاركة الشهادة", fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { selectedCertificatePlan = null }) {
+                        Text("إغلاق", color = TextSecondary)
+                    }
                 }
             },
             title = {

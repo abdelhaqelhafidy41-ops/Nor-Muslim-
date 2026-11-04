@@ -69,11 +69,17 @@ import com.example.ui.theme.IslamicGlassBorder
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import androidx.compose.material.icons.filled.VolumeMute
+import androidx.compose.material.icons.filled.VolumeUp
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
 
 @Composable
 fun TasbihScreen(
     salatiRepo: TasbihAndSalatiRepository,
     onBackClick: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
     val selectedDhikr by salatiRepo.selectedDhikr.collectAsState()
@@ -107,7 +113,10 @@ fun TasbihScreen(
                 trailingAction = {
                     Row {
                         IconButton(
-                            onClick = { salatiRepo.toggleVibration() },
+                            onClick = {
+                                salatiRepo.toggleVibration()
+                                hapticManager?.vibrateTap()
+                            },
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
@@ -117,6 +126,24 @@ fun TasbihScreen(
                                 imageVector = Icons.Default.Vibration,
                                 contentDescription = "الاهتزاز",
                                 tint = if (vibrationEnabled) GoldPrimary else TextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        IconButton(
+                            onClick = {
+                                salatiRepo.toggleSound()
+                                hapticManager?.vibrateTap()
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (soundEnabled) EmeraldPrimary.copy(alpha = 0.2f) else IslamicDarkSurface)
+                        ) {
+                            Icon(
+                                imageVector = if (soundEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeMute,
+                                contentDescription = "الصوت",
+                                tint = if (soundEnabled) EmeraldPrimary else TextSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -274,6 +301,17 @@ fun TasbihScreen(
                         onClick = {
                             isPressed = true
                             salatiRepo.incrementTasbih()
+                            val newCount = selectedDhikr.currentCount + 1
+                            if (vibrationEnabled) {
+                                if (newCount % selectedDhikr.defaultTarget == 0) {
+                                    hapticManager?.vibrateCompletion()
+                                } else {
+                                    hapticManager?.vibrateTap()
+                                }
+                            }
+                            if (soundEnabled) {
+                                audioManager?.playBeepTone()
+                            }
                             isPressed = false
                         }
                     ),

@@ -8,9 +8,12 @@ import com.example.model.PrayerName
 import com.example.model.PrayerTimeItem
 import com.example.model.PrayerTimesData
 import com.example.model.QiblaData
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.atan2
@@ -69,14 +72,29 @@ class PrayerRepository {
 
     fun setCity(city: CityLocation) {
         _currentCity.value = city
+        _livePrayerTimes.value = getTodayPrayerTimes()
     }
 
     fun setCalculationMethod(method: CalculationMethod) {
         _calculationMethod.value = method
+        _livePrayerTimes.value = getTodayPrayerTimes()
     }
 
     fun updateFajrAlarm(alarm: FajrAlarmSetting) {
         _fajrAlarm.value = alarm
+    }
+
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+    private val _livePrayerTimes = MutableStateFlow(getTodayPrayerTimes())
+    val livePrayerTimes: StateFlow<PrayerTimesData> = _livePrayerTimes.asStateFlow()
+
+    init {
+        scope.launch {
+            while (isActive) {
+                _livePrayerTimes.value = getTodayPrayerTimes()
+                delay(1000)
+            }
+        }
     }
 
     fun getTodayPrayerTimes(calendar: Calendar = Calendar.getInstance()): PrayerTimesData {

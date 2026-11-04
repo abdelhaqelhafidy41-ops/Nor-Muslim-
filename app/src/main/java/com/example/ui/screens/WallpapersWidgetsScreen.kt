@@ -67,15 +67,23 @@ import com.example.ui.theme.IslamicDarkCard
 import com.example.ui.theme.IslamicDarkSurface
 import com.example.ui.theme.IslamicGlassBorder
 import com.example.ui.theme.TextGold
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.util.AppHapticManager
+import com.example.util.WallpaperHelper
+import kotlinx.coroutines.launch
 
 @Composable
 fun WallpapersWidgetsScreen(
     hajjMoodRepo: HajjMoodAndAssistantRepository,
     onBackClick: () -> Unit,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var selectedTab by remember { mutableIntStateOf(0) } // 0: خلفيات إسلامية | 1: الويدجت (٣٥+)
     val wallpapers = remember { hajjMoodRepo.wallpapers }
     val widgets = remember { hajjMoodRepo.widgets }
@@ -199,7 +207,18 @@ fun WallpapersWidgetsScreen(
             },
             confirmButton = {
                 ElevatedButton(
-                    onClick = { isAppliedSuccess = true },
+                    onClick = {
+                        coroutineScope.launch {
+                            isAppliedSuccess = WallpaperHelper.applyWallpaper(
+                                context = context,
+                                title = wp.title,
+                                calligraphyQuote = wp.calligraphyQuote,
+                                startColorHex = wp.primaryColorHex,
+                                endColorHex = wp.secondaryColorHex
+                            )
+                            hapticManager?.vibrateCompletion()
+                        }
+                    },
                     colors = ButtonDefaults.elevatedButtonColors(
                         containerColor = GoldPrimary,
                         contentColor = Color(0xFF1E1700)

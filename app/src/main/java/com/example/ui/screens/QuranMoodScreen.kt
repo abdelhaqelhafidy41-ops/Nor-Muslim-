@@ -57,14 +57,21 @@ import com.example.ui.theme.IslamicDarkSurface
 import com.example.ui.theme.IslamicGlassBorder
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.TextSecondary
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.ShareHelper
 
 @Composable
 fun QuranMoodScreen(
     hajjMoodRepo: HajjMoodAndAssistantRepository,
     onBackClick: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val moods = remember { hajjMoodRepo.quranMoods }
     var selectedMood by remember { mutableStateOf(moods[0]) }
 
@@ -146,7 +153,10 @@ fun QuranMoodScreen(
                             PillBadge(text = selectedMood.surahAndVerse, color = GoldLight)
                             Row {
                                 IconButton(
-                                    onClick = { /* Play audio snippet */ },
+                                    onClick = {
+                                        audioManager?.playDhikrAudio(selectedMood.ayahText)
+                                        hapticManager?.vibrateTap()
+                                    },
                                     modifier = Modifier
                                         .size(34.dp)
                                         .clip(CircleShape)
@@ -156,7 +166,14 @@ fun QuranMoodScreen(
                                 }
                                 Spacer(modifier = Modifier.width(6.dp))
                                 IconButton(
-                                    onClick = { /* Share snippet */ },
+                                    onClick = {
+                                        ShareHelper.shareText(
+                                            context = context,
+                                            title = "بلسم قرآني لحالة «${selectedMood.titleArabic}»",
+                                            content = "﴿${selectedMood.ayahText}﴾ [${selectedMood.surahAndVerse}]\n\n💡 لطيفة التدبر: ${selectedMood.shortTafseer}\n\n🤲 الدعاء المأثور:\n${selectedMood.duaText}\n\n— تطبيق «نور المسلم»"
+                                        )
+                                        hapticManager?.vibrateTap()
+                                    },
                                     modifier = Modifier
                                         .size(34.dp)
                                         .clip(CircleShape)

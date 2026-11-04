@@ -73,17 +73,22 @@ import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+
 @Composable
 fun PrayerScreen(
     prayerRepo: PrayerRepository,
     onNavigateSalati: () -> Unit,
     onNavigateQibla: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
     val currentCity by prayerRepo.currentCity.collectAsState()
     val currentMethod by prayerRepo.calculationMethod.collectAsState()
     val fajrAlarm by prayerRepo.fajrAlarm.collectAsState()
-    val prayerData = prayerRepo.getTodayPrayerTimes()
+    val prayerData by prayerRepo.livePrayerTimes.collectAsState()
 
     var showCityDialog by remember { mutableStateOf(false) }
     var showMethodDialog by remember { mutableStateOf(false) }
@@ -501,6 +506,8 @@ fun PrayerScreen(
                                 .background(if (isCurrent) GoldPrimary.copy(alpha = 0.2f) else IslamicDarkSurface)
                                 .clickable {
                                     prayerRepo.updateFajrAlarm(fajrAlarm.copy(soundId = voice.id))
+                                    audioManager?.playAzan(voice.title, voice.reciterOrPlace)
+                                    hapticManager?.vibrateTap()
                                 }
                                 .padding(10.dp)
                         ) {

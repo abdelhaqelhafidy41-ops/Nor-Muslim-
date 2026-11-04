@@ -31,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,11 +42,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.CompassSensorManager
 import androidx.compose.ui.unit.sp
 import com.example.data.AzkarRepository
 import com.example.data.HajjMoodAndAssistantRepository
@@ -95,13 +101,26 @@ sealed class NavItem(
 
 @Composable
 fun NoorMuslimApp() {
+    val context = LocalContext.current
     val quranRepo = remember { QuranRepository() }
     val azkarRepo = remember { AzkarRepository() }
     val prayerRepo = remember { PrayerRepository() }
     val salatiRepo = remember { TasbihAndSalatiRepository() }
     val hajjMoodRepo = remember { HajjMoodAndAssistantRepository() }
 
+    val audioManager = remember { AppAudioManager(context) }
+    val hapticManager = remember { AppHapticManager(context) }
+    val compassSensorManager = remember { CompassSensorManager(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioManager.release()
+            compassSensorManager.stopListening()
+        }
+    }
+
     val activeRadio by hajjMoodRepo.activeRadio.collectAsState()
+    val playbackState by audioManager.playbackState.collectAsState()
 
     var currentScreen by remember { mutableStateOf("home") }
     var selectedSurahForReading by remember { mutableStateOf<Int?>(null) }
@@ -135,14 +154,20 @@ fun NoorMuslimApp() {
                         .fillMaxWidth()
                         .navigationBarsPadding()
                 ) {
-                    // Floating Mini Player if radio is active
-                    if (activeRadio != null) {
+                    // Floating Mini Player if audio playback or live radio is active
+                    val isPlayingAny = playbackState.isPlaying || activeRadio != null
+                    if (isPlayingAny) {
+                        val playerTitle = if (playbackState.title.isNotEmpty()) playbackState.title else (activeRadio?.name ?: "بث مباشر")
+                        val playerSubtitle = if (playbackState.subtitle.isNotEmpty()) playbackState.subtitle else (activeRadio?.country ?: "الإذاعة الإسلامية")
                         AudioMiniPlayerBar(
-                            title = activeRadio!!.name,
-                            subtitle = "بث مباشر • ${activeRadio!!.country}",
-                            isPlaying = true,
-                            onTogglePlay = { hajjMoodRepo.toggleRadio(activeRadio!!) },
-                            onClose = { hajjMoodRepo.toggleRadio(activeRadio!!) }
+                            title = playerTitle,
+                            subtitle = playerSubtitle,
+                            isPlaying = playbackState.isPlaying,
+                            onTogglePlay = { audioManager.togglePlayPause() },
+                            onClose = {
+                                audioManager.stop()
+                                if (activeRadio != null) hajjMoodRepo.toggleRadio(activeRadio!!)
+                            }
                         )
                     }
 
@@ -223,6 +248,8 @@ fun NoorMuslimApp() {
                         quranRepo = quranRepo,
                         azkarRepo = azkarRepo,
                         salatiRepo = salatiRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onNavigate = { route ->
                             if (route.startsWith("quran_read_")) {
                                 val sNum = route.removePrefix("quran_read_").toIntOrNull() ?: 1
@@ -242,16 +269,22 @@ fun NoorMuslimApp() {
                     currentScreen == "quran" -> QuranScreen(
                         quranRepo = quranRepo,
                         initialSurahNumber = selectedSurahForReading,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onNavigateMemorization = { currentScreen = "memorization" }
                     )
                     currentScreen == "prayer" -> PrayerScreen(
                         prayerRepo = prayerRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onNavigateSalati = { currentScreen = "salati" },
                         onNavigateQibla = { currentScreen = "qibla" }
                     )
                     currentScreen == "azkar" -> AzkarScreen(
                         azkarRepo = azkarRepo,
                         initialCategoryId = initialAzkarCategory,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onNavigateTasbih = { currentScreen = "tasbih" }
                     )
                     currentScreen == "more" -> MoreHubScreen(
@@ -259,10 +292,14 @@ fun NoorMuslimApp() {
                     )
                     currentScreen == "memorization" -> MemorizationScreen(
                         quranRepo = quranRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "quran" }
                     )
                     currentScreen == "tasbih" -> TasbihScreen(
                         salatiRepo = salatiRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "home" }
                     )
                     currentScreen == "salati" -> SalatiScreen(
@@ -271,18 +308,26 @@ fun NoorMuslimApp() {
                     )
                     currentScreen == "qibla" -> QiblaScreen(
                         prayerRepo = prayerRepo,
+                        compassSensorManager = compassSensorManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "prayer" }
                     )
                     currentScreen == "quran_mood" -> QuranMoodScreen(
                         hajjMoodRepo = hajjMoodRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "more" }
                     )
                     currentScreen == "hajj" -> HajjUmrahScreen(
                         hajjRepo = hajjMoodRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "more" }
                     )
                     currentScreen == "radio" -> RadioScreen(
                         hajjMoodRepo = hajjMoodRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "more" }
                     )
                     currentScreen == "stories" -> StoriesScreen(
@@ -299,6 +344,7 @@ fun NoorMuslimApp() {
                     )
                     currentScreen == "wallpapers" -> WallpapersWidgetsScreen(
                         hajjMoodRepo = hajjMoodRepo,
+                        hapticManager = hapticManager,
                         onBackClick = { currentScreen = "more" }
                     )
                     currentScreen == "settings" -> SettingsScreen(
@@ -309,6 +355,8 @@ fun NoorMuslimApp() {
                         quranRepo = quranRepo,
                         azkarRepo = azkarRepo,
                         salatiRepo = salatiRepo,
+                        audioManager = audioManager,
+                        hapticManager = hapticManager,
                         onNavigate = { route -> currentScreen = route }
                     )
                 }

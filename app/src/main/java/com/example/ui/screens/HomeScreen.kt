@@ -82,6 +82,10 @@ import com.example.ui.theme.PurpleQuran
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.ShareHelper
 import java.util.Calendar
 
 data class ShortcutItem(
@@ -98,9 +102,12 @@ fun HomeScreen(
     azkarRepo: AzkarRepository,
     salatiRepo: TasbihAndSalatiRepository,
     onNavigate: (String) -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
-    val prayerData = prayerRepo.getTodayPrayerTimes()
+    val context = LocalContext.current
+    val prayerData by prayerRepo.livePrayerTimes.collectAsState()
     val lastReadSurah by quranRepo.lastReadSurah.collectAsState()
     val lastReadAyah by quranRepo.lastReadAyah.collectAsState()
     val todayAyahData = remember { quranRepo.getAyahOfTheDay() }
@@ -545,11 +552,21 @@ fun HomeScreen(
                             }
 
                             IconButton(
-                                onClick = { /* Share dialog feedback */ },
+                                onClick = {
+                                    ShareHelper.shareAyah(
+                                        context = context,
+                                        surahName = "البقرة",
+                                        ayahNumber = 255,
+                                        text = todayAyahData.first.text,
+                                        tafseer = todayAyahData.second
+                                    )
+                                    hapticManager?.vibrateTap()
+                                },
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
                                     .background(IslamicDarkSurface)
+                                    .testTag("share_ayah_of_the_day_button")
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Share,
@@ -668,6 +685,55 @@ fun HomeScreen(
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    audioManager?.playDhikrAudio(featuredDhikr.text)
+                                    hapticManager?.vibrateTap()
+                                },
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(IslamicDarkSurface)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "استماع للذكر",
+                                    tint = GoldPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = {
+                                    ShareHelper.shareDhikr(
+                                        context = context,
+                                        text = featuredDhikr.text,
+                                        benefit = featuredDhikr.benefit,
+                                        reference = featuredDhikr.reference
+                                    )
+                                    hapticManager?.vibrateTap()
+                                },
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(IslamicDarkSurface)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "مشاركة الذكر",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

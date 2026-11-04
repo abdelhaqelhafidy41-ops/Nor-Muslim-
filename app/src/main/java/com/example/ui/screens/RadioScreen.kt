@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,13 +63,19 @@ import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+
 @Composable
 fun RadioScreen(
     hajjMoodRepo: HajjMoodAndAssistantRepository,
     onBackClick: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
     val activeRadio by hajjMoodRepo.activeRadio.collectAsState()
+    val playbackState by (audioManager?.playbackState?.collectAsState() ?: remember { mutableStateOf(null) })
     val stations = remember { hajjMoodRepo.radioStations }
 
     Column(
@@ -140,7 +147,7 @@ fun RadioScreen(
             }
 
             items(stations) { station ->
-                val isPlaying = activeRadio?.id == station.id
+                val isPlaying = (playbackState?.isPlaying == true && playbackState?.title == station.name) || activeRadio?.id == station.id
                 IslamicGlassCard(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -158,7 +165,16 @@ fun RadioScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             IconButton(
-                                onClick = { hajjMoodRepo.toggleRadio(station) },
+                                onClick = {
+                                    if (isPlaying) {
+                                        audioManager?.stop()
+                                        hajjMoodRepo.toggleRadio(station)
+                                    } else {
+                                        audioManager?.playRadioStream(station.streamUrl, station.name, station.country)
+                                        hajjMoodRepo.toggleRadio(station)
+                                    }
+                                    hapticManager?.vibrateTap()
+                                },
                                 modifier = Modifier
                                     .size(42.dp)
                                     .clip(CircleShape)

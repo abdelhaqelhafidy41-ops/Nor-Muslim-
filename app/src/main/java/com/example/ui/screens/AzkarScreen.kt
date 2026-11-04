@@ -60,17 +60,25 @@ import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.IslamicDarkCard
 import com.example.ui.theme.IslamicDarkSurface
 import com.example.ui.theme.IslamicGlassBorder
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.ShareHelper
 
 @Composable
 fun AzkarScreen(
     azkarRepo: AzkarRepository,
     initialCategoryId: String = "sabah",
     onNavigateTasbih: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val categories = remember { azkarRepo.getCategories() }
     var selectedCatId by remember { mutableStateOf(initialCategoryId) }
     val allItems by azkarRepo.items.collectAsState()
@@ -212,9 +220,26 @@ fun AzkarScreen(
                                 )
                             }
 
-                            Row {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(
-                                    onClick = { azkarRepo.toggleFavorite(dhikr.id) },
+                                    onClick = {
+                                        audioManager?.playDhikrAudio(dhikr.text)
+                                        hapticManager?.vibrateTap()
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "استماع للذكر",
+                                        tint = GoldLight,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        azkarRepo.toggleFavorite(dhikr.id)
+                                        hapticManager?.vibrateTap()
+                                    },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -225,7 +250,15 @@ fun AzkarScreen(
                                     )
                                 }
                                 IconButton(
-                                    onClick = { /* Share dialog */ },
+                                    onClick = {
+                                        ShareHelper.shareDhikr(
+                                            context = context,
+                                            text = dhikr.text,
+                                            benefit = dhikr.benefit,
+                                            reference = dhikr.reference
+                                        )
+                                        hapticManager?.vibrateTap()
+                                    },
                                     modifier = Modifier.size(32.dp)
                                 ) {
                                     Icon(
@@ -309,8 +342,14 @@ fun AzkarScreen(
                                     .clickable {
                                         if (!isCompleted) {
                                             azkarRepo.incrementDhikr(dhikr.id)
+                                            if (dhikr.currentCount + 1 >= dhikr.countTarget) {
+                                                hapticManager?.vibrateCompletion()
+                                            } else {
+                                                hapticManager?.vibrateTap()
+                                            }
                                         } else {
                                             azkarRepo.resetDhikr(dhikr.id)
+                                            hapticManager?.vibrateTap()
                                         }
                                     }
                                     .testTag("dhikr_tap_${dhikr.id}"),

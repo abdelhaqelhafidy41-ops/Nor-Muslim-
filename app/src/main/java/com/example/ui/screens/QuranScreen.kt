@@ -82,19 +82,27 @@ import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.IslamicDarkCard
 import com.example.ui.theme.IslamicDarkSurface
 import com.example.ui.theme.IslamicGlassBorder
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.PurpleQuran
 import com.example.ui.theme.PurpleQuranLight
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.util.AppAudioManager
+import com.example.util.AppHapticManager
+import com.example.util.ShareHelper
 
 @Composable
 fun QuranScreen(
     quranRepo: QuranRepository,
     initialSurahNumber: Int? = null,
     onNavigateMemorization: () -> Unit,
+    audioManager: AppAudioManager? = null,
+    hapticManager: AppHapticManager? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val playbackState by (audioManager?.playbackState?.collectAsState() ?: remember { mutableStateOf(null) })
     var selectedTab by remember { mutableIntStateOf(if (initialSurahNumber != null) 1 else 0) }
     var selectedSurah by remember {
         mutableStateOf(
@@ -380,8 +388,22 @@ fun QuranScreen(
                                 }
                             }
 
+                            val isCurrentPlaying = (playbackState?.isPlaying == true && playbackState?.title?.contains(selectedSurah.nameArabic) == true) || isPlayingRecitation
+
                             ElevatedButton(
-                                onClick = { isPlayingRecitation = !isPlayingRecitation },
+                                onClick = {
+                                    if (isCurrentPlaying) {
+                                        audioManager?.stop()
+                                        isPlayingRecitation = false
+                                    } else {
+                                        audioManager?.playQuranRecitation(
+                                            surahNumber = selectedSurah.number,
+                                            surahName = selectedSurah.nameArabic
+                                        )
+                                        isPlayingRecitation = true
+                                    }
+                                    hapticManager?.vibrateTap()
+                                },
                                 colors = ButtonDefaults.elevatedButtonColors(
                                     containerColor = PurpleQuran,
                                     contentColor = Color.White
@@ -390,13 +412,13 @@ fun QuranScreen(
                                 modifier = Modifier.testTag("quran_play_button")
                             ) {
                                 Icon(
-                                    imageVector = if (isPlayingRecitation) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    imageVector = if (isCurrentPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = if (isPlayingRecitation) "إيقاف" else "تلاوة",
+                                    text = if (isCurrentPlaying) "إيقاف" else "تلاوة",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -485,6 +507,7 @@ fun QuranScreen(
                                         IconButton(
                                             onClick = {
                                                 quranRepo.updateLastRead(ayah.surahNumber, ayah.numberInSurah)
+                                                hapticManager?.vibrateTap()
                                             },
                                             modifier = Modifier.size(32.dp)
                                         ) {
@@ -497,7 +520,31 @@ fun QuranScreen(
                                         }
 
                                         IconButton(
-                                            onClick = { /* Share dialog */ },
+                                            onClick = {
+                                                audioManager?.playDhikrAudio(ayah.text)
+                                                hapticManager?.vibrateTap()
+                                            },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PlayArrow,
+                                                contentDescription = "استماع للآية",
+                                                tint = GoldLight,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+
+                                        IconButton(
+                                            onClick = {
+                                                ShareHelper.shareAyah(
+                                                    context = context,
+                                                    surahName = selectedSurah.nameArabic,
+                                                    ayahNumber = ayah.numberInSurah,
+                                                    text = ayah.text,
+                                                    tafseer = quranRepo.getTafseer(ayah.surahNumber, ayah.numberInSurah, "muyassar")?.text
+                                                )
+                                                hapticManager?.vibrateTap()
+                                            },
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
